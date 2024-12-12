@@ -1,13 +1,13 @@
 # godir
 Goto Directory - A fuzzy directory navigation tool
 
-Godir is a fuzzy directory navigation tool that allows you to quickly navigate to directories based on a pattern.
+Godir is CLI tool that allows you to quickly navigate to a directory based on a pattern.
 
-Very early in my career, I built a command line utility in C called `gd` - "go directory" that allowed me to navigate to directories based on a patterns. I've been missing that little tool ever since. So I rebuilt the tool in Rust.
+Very early in my career, I built a command line utility in C/Assembly called `gd` - "go directory" that allowed me to navigate to directories based on patterns. I've been missing that little tool ever since. So, I rebuilt it in Rust.
 
 ## Installation
 
-To ensure `godir` can change the current shell directory, add a shell function. Modify your shell’s configuration file (~/.bashrc, ~/.zshrc, etc.):
+To ensure `godir` can change the current shell directory, add a shell function to your shell’s configuration file (~/.bashrc, ~/.zshrc, etc.):
 
 ```sh
 godir() {
@@ -25,20 +25,25 @@ Then source the configuration you used above (i.e. ~/.bashrc, ~/.zshrc, etc.)
 source ~/.bashrc
 ```
 
-
 ## Usage
 
 ```sh
 godir <pattern>
 ```
 
+Pro Tip: to quickly add the current directory to the configuration file, use the `.` pattern.
+
+```sh
+godir .
+```
 
 ---
 
 ## Usage tips
 
-The godir command maintains a configuration file in the user's home directory. The configuration file is named `directories.json` and is located in the `.godir` directory under the user's home directory. The configuration file is used to store the directories that `godir` has scanned.
+The `godir` command maintains an editable configuration file. You can find the `directories.json` file in the `.godir` directory under the user's home directory. The configuration file is used to store the directories that `godir` knows about.
 
+Here's an example of what the `directories.json` file looks like:
 
 ```json
 {
@@ -71,13 +76,13 @@ The godir command maintains a configuration file in the user's home directory. T
 
 Manually edit the configuration file to add or remove directories.
 
-To exclude directories, add them to the `excludes` array.
+To exclude directories, add related patterns to the `excludes` array.
 
 Notes:
 * If you use a pattern that `godir` doesn't reconize then it will give you the option to add a directory path on the spot or ask if you'd like it to perform a full directory scan.  It will then add the directory path(s) it matches to the configuration file.
 * After a full directory scan, you should edit the `~/.godir\directories.json` file to cleanup any entries that you don't care about.  You can also add patterns to the `excludes` array to exclude directories from future scans.
 
-To quickly add the current directory to the configuration file, use the `.` pattern.
+Remember, to quickly add the current directory to the configuration file, use the `.` pattern.
 
 ```sh
 godir .
@@ -85,7 +90,7 @@ godir .
 
 ### Pattern Expressions
 
-godir supports the following pattern matching expressions:
+Godir supports Regex pattern matching expressions:
 
 #### Basic Patterns
 - `foo` - Matches any directory containing "foo"
