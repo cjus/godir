@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use std::fs::{self, File};
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 
 use clap::Parser;
@@ -18,6 +18,7 @@ struct Cli {
 #[derive(Serialize, Deserialize)]
 struct Config {
     directories: Vec<String>,
+    excludes: Vec<String>,
 }
 
 fn main() -> io::Result<()> {
@@ -37,6 +38,85 @@ fn main() -> io::Result<()> {
 
     if matches.is_empty() {
         eprintln!("No matching directories found for pattern: {}", args.pattern);
+        eprintln!("Would you like to manually enter the directory path? [y/N]");
+        
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        
+        if input.trim().eq_ignore_ascii_case("y") {
+            eprintln!("Enter the full directory path:");
+            let mut path_input = String::new();
+            io::stdin().read_line(&mut path_input)?;
+            let path = path_input.trim();
+            
+            if Path::new(path).is_dir() {
+                let mut config = config;
+                config.directories.push(path.to_string());
+                config.directories.sort();
+                config.directories.dedup();
+                save_config(&config_path, &config)?;
+                println!("{}", path);
+            } else {
+                eprintln!("Invalid directory path.");
+                eprintln!("Would you like to perform a full directory scan? [y/N]");
+                
+                let mut scan_input = String::new();
+                io::stdin().read_line(&mut scan_input)?;
+                
+                if scan_input.trim().eq_ignore_ascii_case("y") {
+                    eprintln!("Scanning directories...");
+                    let mut config = config;
+                    let new_matches = scan_directories(&args.pattern, Path::new("/"), &config.excludes)?;
+                    
+                    if !new_matches.is_empty() {
+                        config.directories.extend(new_matches.iter().cloned());
+                        config.directories.sort();
+                        config.directories.dedup();
+                        save_config(&config_path, &config)?;
+                        
+                        eprintln!("Found {} new matching directories:", new_matches.len());
+                        for dir in &new_matches {
+                            eprintln!("  {}", dir);
+                        }
+                        
+                        if new_matches.len() == 1 {
+                            println!("{}", new_matches[0]);
+                        }
+                    } else {
+                        eprintln!("No matching directories found after scan.");
+                    }
+                }
+            }
+        } else {
+            eprintln!("Would you like to perform a full directory scan? [y/N]");
+            
+            let mut scan_input = String::new();
+            io::stdin().read_line(&mut scan_input)?;
+            
+            if scan_input.trim().eq_ignore_ascii_case("y") {
+                eprintln!("Scanning directories...");
+                let mut config = config;
+                let new_matches = scan_directories(&args.pattern, Path::new("/"), &config.excludes)?;
+                
+                if !new_matches.is_empty() {
+                    config.directories.extend(new_matches.iter().cloned());
+                    config.directories.sort();
+                    config.directories.dedup();
+                    save_config(&config_path, &config)?;
+                    
+                    eprintln!("Found {} new matching directories:", new_matches.len());
+                    for dir in &new_matches {
+                        eprintln!("  {}", dir);
+                    }
+                    
+                    if new_matches.len() == 1 {
+                        println!("{}", new_matches[0]);
+                    }
+                } else {
+                    eprintln!("No matching directories found after scan.");
+                }
+            }
+        }
     } else if matches.len() == 1 {
         // If exactly one match, output just the path
         println!("{}", matches[0]);
@@ -67,7 +147,10 @@ fn load_or_initialize_config(config_path: &Path) -> io::Result<Config> {
     if !config_path.exists() {
         // Create .godir directory and default config
         fs::create_dir_all(config_path.parent().unwrap())?;
-        let default_config = Config { directories: vec![] };
+        let default_config = Config { 
+            directories: vec![],
+            excludes: vec![],  // Empty by default, user will populate via directories.json
+        };
         save_config(config_path, &default_config)?;
     }
 
@@ -89,4 +172,59 @@ fn find_matches(directories: &[String], pattern: &str) -> io::Result<Vec<String>
         .filter(|dir| regex.is_match(dir))
         .cloned()
         .collect())
+}
+
+fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io::Result<Vec<String>> {
+    let regex = Regex::new(pattern)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
+    let mut matches = Vec::new();
+
+    // Basic skip dirs (only those that could cause issues)
+    let skip_dirs = vec![
+        ".Trash"  // Keep only essential system directories that should always be skipped
+    ];
+
+    fn visit_dirs(dir: &Path, regex: &Regex, matches: &mut Vec<String>, skip_dirs: &[&str], excludes: &[String]) -> io::Result<()> {
+        // Show current directory being scanned
+        if let Some(dir_str) = dir.to_str() {
+            // Check if this directory matches any exclusion pattern
+            if excludes.iter().any(|excluded| dir_str.contains(excluded)) {
+                return Ok(());
+            }
+            
+            eprint!("\rScanning: {}", dir_str);
+            io::stderr().flush().ok();
+        }
+
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                if path.is_dir() {
+                    let dir_name = path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("");
+                    
+                    // Skip hidden and specified directories
+                    if dir_name.starts_with('.') || skip_dirs.contains(&dir_name) {
+                        continue;
+                    }
+
+                    if let Ok(path_str) = path.to_str().ok_or_else(|| {
+                        io::Error::new(io::ErrorKind::InvalidInput, "Invalid path")
+                    }) {
+                        if regex.is_match(path_str) {
+                            matches.push(path_str.to_string());
+                        }
+                    }
+
+                    // Ignore errors when visiting subdirectories
+                    let _ = visit_dirs(&path, regex, matches, skip_dirs, excludes);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    visit_dirs(start_path, &regex, &mut matches, &skip_dirs, excludes)?;
+    Ok(matches)
 }

@@ -3,7 +3,7 @@ name = "godir"
 version = "0.1.0"
 edition = "2021"
 authors = ["Carlos Justiniano <cjus@ieee.org>"]
-description = "A fuzzydirectory navigation tool"
+description = "A fuzzy directory navigation tool"
 
 [dependencies]
 clap = { version = "4.3", features = ["derive"] }
