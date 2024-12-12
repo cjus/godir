@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use std::fs::{self, File};
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::env;
 
 use clap::Parser;
@@ -43,7 +43,6 @@ struct Config {
 fn main() -> io::Result<()> {
     let args = Cli::parse();
 
-    // Get the pattern or show usage if none provided
     let pattern = match args.pattern {
         Some(p) => p,
         None => {
@@ -53,26 +52,34 @@ fn main() -> io::Result<()> {
         }
     };
 
-    // Special case: if pattern is "." add current directory
-    if pattern == "." {
-        let current_dir = env::current_dir()?;
-        if let Some(dir_str) = current_dir.to_str() {
-            let godir_root = home_dir()
-                .expect("Could not determine home directory")
-                .join(".godir");
-            let config_path = godir_root.join("directories.json");
-            
-            let mut config = load_or_initialize_config(&config_path)?;
-            
-            if !config.directories.contains(&dir_str.to_string()) {
-                config.directories.push(dir_str.to_string());
-                config.directories.sort();
-                save_config(&config_path, &config)?;
-                eprintln!("Added current directory to config: {}", dir_str);
+    // Special case: if pattern is "." or looks like a path
+    if pattern == "." || pattern.contains('/') || pattern.contains('\\') {
+        let path = if pattern == "." {
+            env::current_dir()?
+        } else {
+            expand_path(&pattern)?
+        };
+
+        if let Some(dir_str) = path.to_str() {
+            if path.is_dir() {
+                let godir_root = home_dir()
+                    .expect("Could not determine home directory")
+                    .join(".godir");
+                let config_path = godir_root.join("directories.json");
+                
+                let mut config = load_or_initialize_config(&config_path)?;
+                
+                if !config.directories.contains(&dir_str.to_string()) {
+                    config.directories.push(dir_str.to_string());
+                    config.directories.sort();
+                    save_config(&config_path, &config)?;
+                    eprintln!("Added directory to config: {}", dir_str);
+                }
+                println!("{}", dir_str);
+                return Ok(());
             } else {
-                eprintln!("Current directory is already in config: {}", dir_str);
+                eprintln!("Not a valid directory: {}", dir_str);
             }
-            return Ok(());
         }
     }
 
@@ -279,4 +286,13 @@ fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io
 
     visit_dirs(start_path, &regex, &mut matches, &skip_dirs, excludes)?;
     Ok(matches)
+}
+
+fn expand_path(path: &str) -> io::Result<PathBuf> {
+    let path_buf = PathBuf::from(path);
+    if path_buf.is_absolute() {
+        Ok(path_buf)
+    } else {
+        env::current_dir()?.join(path).canonicalize()
+    }
 }
