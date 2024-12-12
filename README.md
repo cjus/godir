@@ -107,4 +107,5 @@ godir ^/Users # Matches directories starting with "/Users"
 godir project$ # Matches directories ending with "project"
 godir dev/./src # Matches paths containing "dev/" followed by any characters, then "/src"
 godir 'test|prod' # Matches directories containing either "test" or "prod"
+godir 'lionheart.*crons' # Matches directories containing "lionheart" followed by any characters, then "crons": ~/dev/lionheart-backend/Lionheart-Boreal/app/crons
 ```
