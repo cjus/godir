@@ -37,7 +37,7 @@ godir <pattern>
 
 ## Usage tips
 
-The godir command maintains a configuration file in the user's home directory. The configuration file is named `.directories.json` and is located in the `.godir` directory under the user's home directory. The configuration file is used to store the directories that `godir` has scanned.
+The godir command maintains a configuration file in the user's home directory. The configuration file is named `directories.json` and is located in the `.godir` directory under the user's home directory. The configuration file is used to store the directories that `godir` has scanned.
 
 
 ```json
@@ -77,6 +77,12 @@ Notes:
 * If you use a pattern that `godir` doesn't reconize then it will give you the option to add a directory path on the spot or ask if you'd like it to perform a full directory scan.  It will then add the directory path(s) it matches to the configuration file.
 * After a full directory scan, you should edit the `~/.godir\directories.json` file to cleanup any entries that you don't care about.  You can also add patterns to the `excludes` array to exclude directories from future scans.
 
+To quickly add the current directory to the configuration file, use the `.` pattern.
+
+```sh
+godir .
+```
+
 ### Pattern Expressions
 
 godir supports the following pattern matching expressions:
@@ -102,6 +108,7 @@ godir supports the following pattern matching expressions:
 #### Examples
 
 ```sh
+godir . # Matches the current directory and adds it to the configuration file
 godir dev # Matches any directory containing "dev"
 godir ^/Users # Matches directories starting with "/Users"
 godir project$ # Matches directories ending with "project"

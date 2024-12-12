@@ -2,6 +2,7 @@
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::Path;
+use std::env;
 
 use clap::Parser;
 use regex::Regex;
@@ -23,6 +24,29 @@ struct Config {
 
 fn main() -> io::Result<()> {
     let args = Cli::parse();
+
+    // Special case: if pattern is "." add current directory
+    if args.pattern == "." {
+        let current_dir = env::current_dir()?;
+        if let Some(dir_str) = current_dir.to_str() {
+            let godir_root = home_dir()
+                .expect("Could not determine home directory")
+                .join(".godir");
+            let config_path = godir_root.join("directories.json");
+            
+            let mut config = load_or_initialize_config(&config_path)?;
+            
+            if !config.directories.contains(&dir_str.to_string()) {
+                config.directories.push(dir_str.to_string());
+                config.directories.sort();
+                save_config(&config_path, &config)?;
+                eprintln!("Added current directory to config: {}", dir_str);
+            } else {
+                eprintln!("Current directory is already in config: {}", dir_str);
+            }
+            return Ok(());
+        }
+    }
 
     // Locate .godir directory
     let godir_root = home_dir()
