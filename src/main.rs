@@ -9,11 +9,29 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use dirs::home_dir;
 
-/// Command-line program for directory navigation based on patterns.
 #[derive(Parser)]
+#[command(
+    author = "Carlos Justiniano <cjus@ieee.org>",
+    version = "0.1.0",
+    about = "A fuzzy directory navigation tool",
+    long_about = "
+Godir (https://github.com/cjus/godir) allows quick navigation to directories 
+using pattern matching. It maintains a list of known directories and exclusions
+in ~/.godir/directories.json and provides features like:
+
+  * Pattern-based directory matching
+  * Full directory scanning
+  * Directory exclusion patterns
+
+Examples:
+    godir .             # Add current directory
+    godir dev           # Match any directory containing 'dev'
+    godir ^/Users       # Match directories starting with '/Users'
+    godir project$      # Match directories ending with 'project'"
+)]
 struct Cli {
     /// The pattern to match a directory
-    pattern: String,
+    pattern: Option<String>,  // Make pattern optional since --help and --version don't need it
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,8 +43,18 @@ struct Config {
 fn main() -> io::Result<()> {
     let args = Cli::parse();
 
+    // Get the pattern or show usage if none provided
+    let pattern = match args.pattern {
+        Some(p) => p,
+        None => {
+            eprintln!("Usage: godir <pattern>");
+            eprintln!("Try 'godir --help' for more information.");
+            return Ok(());
+        }
+    };
+
     // Special case: if pattern is "." add current directory
-    if args.pattern == "." {
+    if pattern == "." {
         let current_dir = env::current_dir()?;
         if let Some(dir_str) = current_dir.to_str() {
             let godir_root = home_dir()
@@ -58,10 +86,10 @@ fn main() -> io::Result<()> {
     let config = load_or_initialize_config(&config_path)?;
 
     // Match directories based on pattern
-    let matches = find_matches(&config.directories, &args.pattern)?;
+    let matches = find_matches(&config.directories, &pattern)?;
 
     if matches.is_empty() {
-        eprintln!("No matching directories found for pattern: {}", args.pattern);
+        eprintln!("No matching directories found for pattern: {}", pattern);
         eprintln!("Would you like to manually enter the directory path? [y/N]");
         
         let mut input = String::new();
@@ -90,7 +118,7 @@ fn main() -> io::Result<()> {
                 if scan_input.trim().eq_ignore_ascii_case("y") {
                     eprintln!("Scanning directories...");
                     let mut config = config;
-                    let new_matches = scan_directories(&args.pattern, Path::new("/"), &config.excludes)?;
+                    let new_matches = scan_directories(&pattern, Path::new("/"), &config.excludes)?;
                     
                     if !new_matches.is_empty() {
                         config.directories.extend(new_matches.iter().cloned());
@@ -120,7 +148,7 @@ fn main() -> io::Result<()> {
             if scan_input.trim().eq_ignore_ascii_case("y") {
                 eprintln!("Scanning directories...");
                 let mut config = config;
-                let new_matches = scan_directories(&args.pattern, Path::new("/"), &config.excludes)?;
+                let new_matches = scan_directories(&pattern, Path::new("/"), &config.excludes)?;
                 
                 if !new_matches.is_empty() {
                     config.directories.extend(new_matches.iter().cloned());

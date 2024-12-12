@@ -7,14 +7,20 @@ Very early in my career, I built a command line utility in C/Assembly called `gd
 
 ## Installation
 
-To ensure `godir` can change the current shell directory, add a shell function to your shell’s configuration file (~/.bashrc, ~/.zshrc, etc.):
+To ensure `godir` can change the current shell directory, add a shell function to your shell's configuration file (~/.bashrc, ~/.zshrc, etc.):
 
 ```sh
 godir() {
-    local dir
-    dir="$(command ~/dev/godir/target/release/godir "$@")"
-    if [ -n "$dir" ]; then
-        cd "$dir"
+    local output
+    output="$(command ~/dev/godir/target/release/godir "$@")"
+    if [ $? -eq 0 ]; then
+        if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--version" ]] || [[ "$1" == "-V" ]]; then
+            # Handle help and version flags
+            echo "$output"
+        elif [ -n "$output" ]; then
+            # Handle directory change
+            cd "$output"
+        fi
     fi
 }
 ```
