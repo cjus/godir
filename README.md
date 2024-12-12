@@ -94,6 +94,24 @@ Remember, to quickly add the current directory to the configuration file, use th
 godir .
 ```
 
+### Path Handling
+
+Godir supports direct navigation using relative or absolute paths:
+
+```sh
+godir ../projects     # Navigate to relative path
+godir /Users/name/dev # Navigate to absolute path
+godir ~/dev/project   # Navigate using shell expansion
+```
+
+When using a path (instead of a pattern), godir will:
+1. Expand the path to its full canonical form
+2. Verify it's a valid directory
+3. Add it to the configuration file if not already present
+4. Navigate to the directory
+
+This makes it easy to add new directories to your configuration while navigating to them.
+
 ### Pattern Expressions
 
 Godir supports Regex pattern matching expressions:
@@ -115,24 +133,6 @@ Godir supports Regex pattern matching expressions:
 - `\w` - Matches word characters (letters, digits, underscore)
 - `\d` - Matches digits
 - `\s` - Matches whitespace
-
-#### Path Handling
-
-Godir supports direct navigation using relative or absolute paths:
-
-```sh
-godir ../projects     # Navigate to relative path
-godir /Users/name/dev # Navigate to absolute path
-godir ~/dev/project   # Navigate using shell expansion
-```
-
-When using a path (instead of a pattern), godir will:
-1. Expand the path to its full canonical form
-2. Verify it's a valid directory
-3. Add it to the configuration file if not already present
-4. Navigate to the directory
-
-This makes it easy to add new directories to your configuration while navigating to them.
 
 #### Examples
 
