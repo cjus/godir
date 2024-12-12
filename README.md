@@ -3,7 +3,7 @@ Goto Directory - A fuzzy directory navigation tool
 
 Godir is a fuzzy directory navigation tool that allows you to quickly navigate to directories based on a pattern.
 
-Very early in my career, I built a command line utility in C called `gd` - go directory that required me to navigate to directories based on a pattern. I've been missing that little tool ever since. So I rebuilt the tool in Rust.
+Very early in my career, I built a command line utility in C called `gd` - "go directory" that allowed me to navigate to directories based on a patterns. I've been missing that little tool ever since. So I rebuilt the tool in Rust.
 
 ## Installation
 
