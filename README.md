@@ -14,8 +14,8 @@ godir() {
     local output
     output="$(command ~/dev/godir/target/release/godir "$@")"
     if [ $? -eq 0 ]; then
-        if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--version" ]] || [[ "$1" == "-V" ]]; then
-            # Handle help and version flags
+        if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--version" ]] || [[ "$1" == "-V" ]] || [[ "$1" == "--list" ]] || [[ "$1" == "-l" ]]; then
+            # Handle help, version, and list flags
             echo "$output"
         elif [ -n "$output" ]; then
             # Handle directory change

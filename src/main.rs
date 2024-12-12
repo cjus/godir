@@ -12,26 +12,38 @@ use dirs::home_dir;
 #[derive(Parser)]
 #[command(
     author = "Carlos Justiniano <cjus@ieee.org>",
-    version = "0.1.0",
+    version = env!("CARGO_PKG_VERSION"),
     about = "A fuzzy directory navigation tool",
     long_about = "
-Godir (https://github.com/cjus/godir) allows quick navigation to directories 
-using pattern matching. It maintains a list of known directories and exclusions
-in ~/.godir/directories.json and provides features like:
+Godir allows quick navigation to directories using pattern matching.
+It maintains a list of known directories and exclusions in 
+~/.godir/directories.json and provides features like:
 
   * Pattern-based directory matching
   * Full directory scanning
   * Directory exclusion patterns
 
-Examples:
+Godir supports direct navigation using relative or absolute paths:
+    godir ../projects     # Navigate to relative path
+    godir /Users/name/dev # Navigate to absolute path
+    godir ~/dev/project   # Navigate using shell expansion
+
+Other examples:
     godir .             # Add current directory
     godir dev           # Match any directory containing 'dev'
     godir ^/Users       # Match directories starting with '/Users'
-    godir project$      # Match directories ending with 'project'"
+    godir project$      # Match directories ending with 'project'
+
+Visit https://github.com/cjus/godir for more information."
 )]
 struct Cli {
-    /// The pattern to match a directory
-    pattern: Option<String>,  // Make pattern optional since --help and --version don't need it
+    /// The pattern to match a directory, or --list to show configuration
+    #[arg(default_value = None)]
+    pattern: Option<String>,
+
+    /// List the contents of the configuration file
+    #[arg(long, short)]
+    list: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -42,6 +54,17 @@ struct Config {
 
 fn main() -> io::Result<()> {
     let args = Cli::parse();
+
+    // Handle list command
+    if args.list {
+        let godir_root = home_dir()
+            .expect("Could not determine home directory")
+            .join(".godir");
+        let config_path = godir_root.join("directories.json");
+        let config = load_or_initialize_config(&config_path)?;
+        println!("{}", serde_json::to_string_pretty(&config)?);
+        return Ok(());
+    }
 
     let pattern = match args.pattern {
         Some(p) => p,
