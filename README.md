@@ -3,11 +3,11 @@ Goto Directory - A fuzzy directory navigation tool
 
 Godir is a fuzzy directory navigation tool that allows you to quickly navigate to directories based on a pattern.
 
-Very early in my career, I built a command line utility in C that required me to navigate to directories based on a pattern. I've been missing that little tool ever since. So I rebuilt the tool in Rust.
+Very early in my career, I built a command line utility in C called `gd` - go directory that required me to navigate to directories based on a pattern. I've been missing that little tool ever since. So I rebuilt the tool in Rust.
 
 ## Installation
 
-To ensure godir can change the current shell directory, add a shell function. Modify your shell’s configuration file (~/.bashrc, ~/.zshrc, etc.):
+To ensure `godir` can change the current shell directory, add a shell function. Modify your shell’s configuration file (~/.bashrc, ~/.zshrc, etc.):
 
 ```sh
 godir() {
@@ -18,6 +18,8 @@ godir() {
     fi
 }
 ```
+
+Then source the configuration you used above (i.e. ~/.bashrc, ~/.zshrc, etc.)
 
 ```sh
 source ~/.bashrc
@@ -72,6 +74,34 @@ Edit the configuration file to add or remove directories.
 To exclude directories, add them to the `excludes` array.
 
 
+### Pattern Expressions
 
+godir supports the following pattern matching expressions:
 
+#### Basic Patterns
+- `foo` - Matches any directory containing "foo"
+- `^foo` - Matches directories that start with "foo"
+- `foo$` - Matches directories that end with "foo"
+- `foo|bar` - Matches directories containing either "foo" or "bar"
 
+#### Directory Path Patterns
+- `dev/foo` - Matches directories containing "dev/foo"
+- `/Users/name` - Matches exact path segments
+- `^/Users/name` - Matches paths starting from root
+
+#### Special Characters
+- `.` - Matches any single character
+- `.*` - Matches zero or more of any character
+- `\w` - Matches word characters (letters, digits, underscore)
+- `\d` - Matches digits
+- `\s` - Matches whitespace
+
+#### Examples
+
+```sh
+godir dev # Matches any directory containing "dev"
+godir ^/Users # Matches directories starting with "/Users"
+godir project$ # Matches directories ending with "project"
+godir dev/./src # Matches paths containing "dev/" followed by any characters, then "/src"
+godir 'test|prod' # Matches directories containing either "test" or "prod"
+```
