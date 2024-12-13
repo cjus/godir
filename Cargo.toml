@@ -1,6 +1,6 @@
 [package]
 name = "godir"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["Carlos Justiniano <cjus@ieee.org>"]
 description = "A fuzzy directory navigation tool"
