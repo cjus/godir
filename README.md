@@ -12,6 +12,7 @@ Very early in my career, I built a command line utility in C/Assembly called `gd
 On Mac's you can brew install godir.
 
 ```sh
+brew tap cjus/godir
 brew install godir
 ```
 
