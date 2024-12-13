@@ -1,5 +1,5 @@
 # godir
-Goto Directory - A fuzzy directory navigation tool
+Goto Directory - A fuzzy directory navigation tool for command line Ninjas
 
 Godir is CLI tool that allows you to quickly navigate to a directory based on a pattern.
 
