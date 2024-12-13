@@ -9,7 +9,15 @@ Very early in my career, I built a command line utility in C/Assembly called `gd
 
 ## Installation
 
-Prebuilt binaries are available for macOS, Linux, and Windows in the [releases](https://github.com/cjus/godir/releases) section. Download the appropriate binary for your system and add it to your PATH.
+On Mac's you can brew install godir.
+
+```sh
+brew install cjus/godir
+```
+
+Make sure to follow the post install instructions.
+
+Prebuilt binaries are also available for macOS, Linux, and Windows in the [releases](https://github.com/cjus/godir/releases) section. Download the appropriate binary for your system and add it to your PATH.
 
 ### Unix-based Systems (macOS/Linux)
 To ensure `godir` can change the current shell directory, add this shell function to your shell's configuration file (~/.bashrc, ~/.zshrc, etc.):
