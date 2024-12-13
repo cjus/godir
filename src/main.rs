@@ -248,7 +248,14 @@ fn save_config(config_path: &Path, config: &Config) -> io::Result<()> {
 }
 
 fn find_matches(directories: &[String], pattern: &str) -> io::Result<Vec<String>> {
-    let regex = Regex::new(pattern).map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
+    let regex = if cfg!(windows) {
+        // Case-insensitive regex for Windows
+        Regex::new(&format!("(?i){}", pattern))
+    } else {
+        // Case-sensitive regex for Unix
+        Regex::new(pattern)
+    }.map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
+
     Ok(directories
         .iter()
         .filter(|dir| regex.is_match(dir))
@@ -257,8 +264,14 @@ fn find_matches(directories: &[String], pattern: &str) -> io::Result<Vec<String>
 }
 
 fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io::Result<Vec<String>> {
-    let regex = Regex::new(pattern)
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
+    let regex = if cfg!(windows) {
+        // Case-insensitive regex for Windows
+        Regex::new(&format!("(?i){}", pattern))
+    } else {
+        // Case-sensitive regex for Unix
+        Regex::new(pattern)
+    }.map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
+
     let mut matches = Vec::new();
 
     // Basic skip dirs (only those that could cause issues)
@@ -277,7 +290,17 @@ fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io
 
     fn visit_dirs(dir: &Path, regex: &Regex, matches: &mut Vec<String>, skip_dirs: &[&str], excludes: &[String]) -> io::Result<()> {
         if let Some(dir_str) = dir.to_str() {
-            if excludes.iter().any(|excluded| dir_str.contains(excluded)) {
+            // Case-insensitive check for Windows
+            let is_excluded = if cfg!(windows) {
+                let dir_str_lower = dir_str.to_lowercase();
+                excludes.iter().any(|excluded| 
+                    dir_str_lower.contains(&excluded.to_lowercase())
+                )
+            } else {
+                excludes.iter().any(|excluded| dir_str.contains(excluded))
+            };
+
+            if is_excluded {
                 return Ok(());
             }
             
