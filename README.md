@@ -7,29 +7,46 @@ Very early in my career, I built a command line utility in C/Assembly called `gd
 
 ## Installation
 
-To ensure `godir` can change the current shell directory, add a shell function to your shell's configuration file (~/.bashrc, ~/.zshrc, etc.):
+Prebuilt binaries are available for macOS, Linux, and Windows in the [releases](https://github.com/cjus/godir/releases) section. Download the appropriate binary for your system and add it to your PATH.
 
+### Unix-based Systems (macOS/Linux)
+To ensure `godir` can change the current shell directory, add this shell function to your shell's configuration file (~/.bashrc, ~/.zshrc, etc.):
+
+Replace `PATH_TO_GODIR` with the path to the `godir` binary.
 ```sh
 godir() {
     local output
-    output="$(command ~/dev/godir/target/release/godir "$@")"
+    output="$(command PATH_TO_GODIR/godir "$@")"
     if [ $? -eq 0 ]; then
         if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--version" ]] || [[ "$1" == "-V" ]] || [[ "$1" == "--list" ]] || [[ "$1" == "-l" ]]; then
-            # Handle help, version, and list flags
             echo "$output"
         elif [ -n "$output" ]; then
-            # Handle directory change
             cd "$output"
         fi
     fi
 }
 ```
 
-Then source the configuration you used above (i.e. ~/.bashrc, ~/.zshrc, etc.)
+### Windows
+For Windows PowerShell, add this function to your PowerShell profile (usually at `$PROFILE`):
 
-```sh
-source ~/.bashrc
+```powershell
+function godir {
+    $output = & godir.exe $args
+    if ($LASTEXITCODE -eq 0) {
+        if ($args -contains "--help" -or $args -contains "-h" -or $args -contains "--version" -or $args -contains "-V" -or $args -contains "--list" -or $args -contains "-l") {
+            Write-Output $output
+        }
+        elseif ($output) {
+            Set-Location $output
+        }
+    }
+}
 ```
+
+Then reload your shell configuration:
+- Unix: `source ~/.bashrc` (or ~/.zshrc)
+- Windows: `. $PROFILE`
 
 ## Usage
 

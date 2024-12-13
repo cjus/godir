@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use std::fs::{self, File};
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::env;
 
 use clap::Parser;
@@ -76,7 +76,7 @@ fn main() -> io::Result<()> {
     };
 
     // Special case: if pattern is "." or looks like a path
-    if pattern == "." || pattern.contains('/') || pattern.contains('\\') {
+    if pattern == "." || pattern.contains(MAIN_SEPARATOR) {
         let path = if pattern == "." {
             env::current_dir()?
         } else {
@@ -262,14 +262,21 @@ fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io
     let mut matches = Vec::new();
 
     // Basic skip dirs (only those that could cause issues)
-    let skip_dirs = vec![
-        ".Trash"  // Keep only essential system directories that should always be skipped
-    ];
+    let skip_dirs = if cfg!(windows) {
+        vec![
+            ".Trash",
+            "System Volume Information",
+            "$Recycle.Bin",
+            "Windows",
+            "Program Files",
+            "Program Files (x86)",
+        ]
+    } else {
+        vec![".Trash"]
+    };
 
     fn visit_dirs(dir: &Path, regex: &Regex, matches: &mut Vec<String>, skip_dirs: &[&str], excludes: &[String]) -> io::Result<()> {
-        // Show current directory being scanned
         if let Some(dir_str) = dir.to_str() {
-            // Check if this directory matches any exclusion pattern
             if excludes.iter().any(|excluded| dir_str.contains(excluded)) {
                 return Ok(());
             }
@@ -278,33 +285,37 @@ fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io
             io::stderr().flush().ok();
         }
 
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.filter_map(Result::ok) {
-                let path = entry.path();
-                if path.is_dir() {
-                    let dir_name = path.file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("");
-                    
-                    // Skip hidden and specified directories
-                    if dir_name.starts_with('.') || skip_dirs.contains(&dir_name) {
-                        continue;
-                    }
-
-                    if let Ok(path_str) = path.to_str().ok_or_else(|| {
-                        io::Error::new(io::ErrorKind::InvalidInput, "Invalid path")
-                    }) {
-                        if regex.is_match(path_str) {
-                            matches.push(path_str.to_string());
+        match fs::read_dir(dir) {
+            Ok(entries) => {
+                for entry in entries.filter_map(Result::ok) {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        let dir_name = path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("");
+                        
+                        // Skip hidden and specified directories
+                        if dir_name.starts_with('.') || skip_dirs.contains(&dir_name) {
+                            continue;
                         }
-                    }
 
-                    // Ignore errors when visiting subdirectories
-                    let _ = visit_dirs(&path, regex, matches, skip_dirs, excludes);
+                        if let Ok(path_str) = path.to_str().ok_or_else(|| {
+                            io::Error::new(io::ErrorKind::InvalidInput, "Invalid path")
+                        }) {
+                            if regex.is_match(path_str) {
+                                matches.push(path_str.to_string());
+                            }
+                        }
+
+                        // Ignore errors when visiting subdirectories
+                        let _ = visit_dirs(&path, regex, matches, skip_dirs, excludes);
+                    }
                 }
+                Ok(())
             }
+            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => Ok(()),
+            Err(e) => Err(e),
         }
-        Ok(())
     }
 
     visit_dirs(start_path, &regex, &mut matches, &skip_dirs, excludes)?;
@@ -312,10 +323,22 @@ fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io
 }
 
 fn expand_path(path: &str) -> io::Result<PathBuf> {
-    let path_buf = PathBuf::from(path);
+    let path_buf = if path.starts_with('~') {
+        home_dir()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?
+            .join(&path[2..])
+    } else {
+        PathBuf::from(path)
+    };
+
     if path_buf.is_absolute() {
         Ok(path_buf)
     } else {
-        env::current_dir()?.join(path).canonicalize()
+        env::current_dir()?.join(path)
+            .canonicalize()
+            .map_err(|e| io::Error::new(
+                e.kind(),
+                format!("Failed to resolve path: {}", e)
+            ))
     }
 }
