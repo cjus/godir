@@ -1,13 +1,13 @@
+use std::env;
 #[allow(unused_imports)]
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf, MAIN_SEPARATOR};
-use std::env;
 
 use clap::Parser;
+use dirs::home_dir;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use dirs::home_dir;
 
 #[derive(Parser)]
 #[command(
@@ -52,6 +52,12 @@ struct Config {
     excludes: Vec<String>,
 }
 
+fn update_and_save_config(config_path: &Path, config: &mut Config) -> io::Result<()> {
+    config.directories.sort();
+    config.directories.dedup();
+    save_config(config_path, config)
+}
+
 fn main() -> io::Result<()> {
     let args = Cli::parse();
 
@@ -89,13 +95,12 @@ fn main() -> io::Result<()> {
                     .expect("Could not determine home directory")
                     .join(".godir");
                 let config_path = godir_root.join("directories.json");
-                
+
                 let mut config = load_or_initialize_config(&config_path)?;
-                
+
                 if !config.directories.contains(&dir_str.to_string()) {
                     config.directories.push(dir_str.to_string());
-                    config.directories.sort();
-                    save_config(&config_path, &config)?;
+                    update_and_save_config(&config_path, &mut config)?;
                     eprintln!("Added directory to config: {}", dir_str);
                 }
                 println!("{}", dir_str);
@@ -121,46 +126,42 @@ fn main() -> io::Result<()> {
     if matches.is_empty() {
         eprintln!("No matching directories found for pattern: {}", pattern);
         eprintln!("Would you like to manually enter the directory path? [y/N]");
-        
+
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
-        
+
         if input.trim().eq_ignore_ascii_case("y") {
             eprintln!("Enter the full directory path:");
             let mut path_input = String::new();
             io::stdin().read_line(&mut path_input)?;
             let path = path_input.trim();
-            
+
             if Path::new(path).is_dir() {
                 let mut config = config;
                 config.directories.push(path.to_string());
-                config.directories.sort();
-                config.directories.dedup();
-                save_config(&config_path, &config)?;
+                update_and_save_config(&config_path, &mut config)?;
                 println!("{}", path);
             } else {
                 eprintln!("Invalid directory path.");
                 eprintln!("Would you like to perform a full directory scan? [y/N]");
-                
+
                 let mut scan_input = String::new();
                 io::stdin().read_line(&mut scan_input)?;
-                
+
                 if scan_input.trim().eq_ignore_ascii_case("y") {
                     eprintln!("Scanning directories...");
                     let mut config = config;
                     let new_matches = scan_directories(&pattern, Path::new("/"), &config.excludes)?;
-                    
+
                     if !new_matches.is_empty() {
                         config.directories.extend(new_matches.iter().cloned());
-                        config.directories.sort();
-                        config.directories.dedup();
-                        save_config(&config_path, &config)?;
-                        
+                        update_and_save_config(&config_path, &mut config)?;
+
                         eprintln!("Found {} new matching directories:", new_matches.len());
                         for dir in &new_matches {
                             eprintln!("  {}", dir);
                         }
-                        
+
                         if new_matches.len() == 1 {
                             println!("{}", new_matches[0]);
                         }
@@ -171,26 +172,24 @@ fn main() -> io::Result<()> {
             }
         } else {
             eprintln!("Would you like to perform a full directory scan? [y/N]");
-            
+
             let mut scan_input = String::new();
             io::stdin().read_line(&mut scan_input)?;
-            
+
             if scan_input.trim().eq_ignore_ascii_case("y") {
                 eprintln!("Scanning directories...");
                 let mut config = config;
                 let new_matches = scan_directories(&pattern, Path::new("/"), &config.excludes)?;
-                
+
                 if !new_matches.is_empty() {
                     config.directories.extend(new_matches.iter().cloned());
-                    config.directories.sort();
-                    config.directories.dedup();
-                    save_config(&config_path, &config)?;
-                    
+                    update_and_save_config(&config_path, &mut config)?;
+
                     eprintln!("Found {} new matching directories:", new_matches.len());
                     for dir in &new_matches {
                         eprintln!("  {}", dir);
                     }
-                    
+
                     if new_matches.len() == 1 {
                         println!("{}", new_matches[0]);
                     }
@@ -229,9 +228,9 @@ fn load_or_initialize_config(config_path: &Path) -> io::Result<Config> {
     if !config_path.exists() {
         // Create .godir directory and default config
         fs::create_dir_all(config_path.parent().unwrap())?;
-        let default_config = Config { 
+        let default_config = Config {
             directories: vec![],
-            excludes: vec![],  // Empty by default, user will populate via directories.json
+            excludes: vec![], // Empty by default, user will populate via directories.json
         };
         save_config(config_path, &default_config)?;
     }
@@ -254,7 +253,8 @@ fn find_matches(directories: &[String], pattern: &str) -> io::Result<Vec<String>
     } else {
         // Case-sensitive regex for Unix
         Regex::new(pattern)
-    }.map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
+    }
+    .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
 
     Ok(directories
         .iter()
@@ -263,14 +263,19 @@ fn find_matches(directories: &[String], pattern: &str) -> io::Result<Vec<String>
         .collect())
 }
 
-fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io::Result<Vec<String>> {
+fn scan_directories(
+    pattern: &str,
+    start_path: &Path,
+    excludes: &[String],
+) -> io::Result<Vec<String>> {
     let regex = if cfg!(windows) {
         // Case-insensitive regex for Windows
         Regex::new(&format!("(?i){}", pattern))
     } else {
         // Case-sensitive regex for Unix
         Regex::new(pattern)
-    }.map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
+    }
+    .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid regex pattern"))?;
 
     let mut matches = Vec::new();
 
@@ -288,14 +293,20 @@ fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io
         vec![".Trash"]
     };
 
-    fn visit_dirs(dir: &Path, regex: &Regex, matches: &mut Vec<String>, skip_dirs: &[&str], excludes: &[String]) -> io::Result<()> {
+    fn visit_dirs(
+        dir: &Path,
+        regex: &Regex,
+        matches: &mut Vec<String>,
+        skip_dirs: &[&str],
+        excludes: &[String],
+    ) -> io::Result<()> {
         if let Some(dir_str) = dir.to_str() {
             // Case-insensitive check for Windows
             let is_excluded = if cfg!(windows) {
                 let dir_str_lower = dir_str.to_lowercase();
-                excludes.iter().any(|excluded| 
-                    dir_str_lower.contains(&excluded.to_lowercase())
-                )
+                excludes
+                    .iter()
+                    .any(|excluded| dir_str_lower.contains(&excluded.to_lowercase()))
             } else {
                 excludes.iter().any(|excluded| dir_str.contains(excluded))
             };
@@ -303,7 +314,7 @@ fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io
             if is_excluded {
                 return Ok(());
             }
-            
+
             eprint!("\rScanning: {}", dir_str);
             io::stderr().flush().ok();
         }
@@ -313,10 +324,8 @@ fn scan_directories(pattern: &str, start_path: &Path, excludes: &[String]) -> io
                 for entry in entries.filter_map(Result::ok) {
                     let path = entry.path();
                     if path.is_dir() {
-                        let dir_name = path.file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("");
-                        
+                        let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
                         // Skip hidden and specified directories
                         if dir_name.starts_with('.') || skip_dirs.contains(&dir_name) {
                             continue;
@@ -357,11 +366,9 @@ fn expand_path(path: &str) -> io::Result<PathBuf> {
     if path_buf.is_absolute() {
         Ok(path_buf)
     } else {
-        env::current_dir()?.join(path)
+        env::current_dir()?
+            .join(path)
             .canonicalize()
-            .map_err(|e| io::Error::new(
-                e.kind(),
-                format!("Failed to resolve path: {}", e)
-            ))
+            .map_err(|e| io::Error::new(e.kind(), format!("Failed to resolve path: {}", e)))
     }
 }
