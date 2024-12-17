@@ -3,8 +3,6 @@ Goto Directory - A fuzzy directory navigation tool for command line Ninjas
 
 ![godir](./godir.jpg)
 
-Godir is CLI tool that allows you to quickly navigate to a directory based on a pattern.
-
 Very early in my career, I built a command line utility in C/Assembly called `gd` - "go directory" that allowed me to navigate to directories based on patterns. I've been missing that little tool ever since. So, I rebuilt it in Rust.
 
 Godir supports direct navigation using relative or absolute paths:
