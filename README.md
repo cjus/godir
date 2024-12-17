@@ -7,6 +7,56 @@ Godir is CLI tool that allows you to quickly navigate to a directory based on a 
 
 Very early in my career, I built a command line utility in C/Assembly called `gd` - "go directory" that allowed me to navigate to directories based on patterns. I've been missing that little tool ever since. So, I rebuilt it in Rust.
 
+Godir supports direct navigation using relative or absolute paths:
+
+```sh
+godir ../projects     # Navigate to relative path
+godir /Users/name/dev # Navigate to absolute path
+godir ~/dev/project   # Navigate using shell expansion
+```
+
+When using a path (instead of a pattern), godir will:
+1. Expand the path to its full canonical form
+2. Verify it's a valid directory
+3. Add it to the configuration file if not already present
+4. Navigate to the directory
+
+This makes it easy to add new directories to your configuration while navigating to them.
+
+## Other examples
+
+```sh
+godir . # Matches the current directory and adds it to the configuration file
+godir dev # Matches any directory containing "dev"
+godir ^/Users # Matches directories starting with "/Users"
+godir project$ # Matches directories ending with "project"
+godir dev/./src # Matches paths containing "dev/" followed by any characters, then "/src"
+godir 'test|prod' # Matches directories containing either "test" or "prod"
+godir 'lionheart.*crons' # Matches directories containing "lionheart" followed by any characters, then "crons": ~/dev/lionheart-backend/Lionheart-Boreal/app/crons
+```
+
+## Pattern Expressions
+
+Godir supports Regex pattern matching expressions:
+
+### Basic Patterns
+- `foo` - Matches any directory containing "foo"
+- `^foo` - Matches directories that start with "foo"
+- `foo$` - Matches directories that end with "foo"
+- `foo|bar` - Matches directories containing either "foo" or "bar"
+
+### Directory Path Patterns
+- `dev/foo` - Matches directories containing "dev/foo"
+- `/Users/name` - Matches exact path segments
+- `^/Users/name` - Matches paths starting from root
+
+### Special Characters
+- `.` - Matches any single character
+- `.*` - Matches zero or more of any character
+- `\w` - Matches word characters (letters, digits, underscore)
+- `\d` - Matches digits
+- `\s` - Matches whitespace
+
 ## Installation
 
 On Mac's you can brew install godir.
@@ -120,57 +170,5 @@ Remember, to quickly add the current directory to the configuration file, use th
 
 ```sh
 godir .
-```
-
-### Path Handling
-
-Godir supports direct navigation using relative or absolute paths:
-
-```sh
-godir ../projects     # Navigate to relative path
-godir /Users/name/dev # Navigate to absolute path
-godir ~/dev/project   # Navigate using shell expansion
-```
-
-When using a path (instead of a pattern), godir will:
-1. Expand the path to its full canonical form
-2. Verify it's a valid directory
-3. Add it to the configuration file if not already present
-4. Navigate to the directory
-
-This makes it easy to add new directories to your configuration while navigating to them.
-
-### Pattern Expressions
-
-Godir supports Regex pattern matching expressions:
-
-#### Basic Patterns
-- `foo` - Matches any directory containing "foo"
-- `^foo` - Matches directories that start with "foo"
-- `foo$` - Matches directories that end with "foo"
-- `foo|bar` - Matches directories containing either "foo" or "bar"
-
-#### Directory Path Patterns
-- `dev/foo` - Matches directories containing "dev/foo"
-- `/Users/name` - Matches exact path segments
-- `^/Users/name` - Matches paths starting from root
-
-#### Special Characters
-- `.` - Matches any single character
-- `.*` - Matches zero or more of any character
-- `\w` - Matches word characters (letters, digits, underscore)
-- `\d` - Matches digits
-- `\s` - Matches whitespace
-
-#### Examples
-
-```sh
-godir . # Matches the current directory and adds it to the configuration file
-godir dev # Matches any directory containing "dev"
-godir ^/Users # Matches directories starting with "/Users"
-godir project$ # Matches directories ending with "project"
-godir dev/./src # Matches paths containing "dev/" followed by any characters, then "/src"
-godir 'test|prod' # Matches directories containing either "test" or "prod"
-godir 'lionheart.*crons' # Matches directories containing "lionheart" followed by any characters, then "crons": ~/dev/lionheart-backend/Lionheart-Boreal/app/crons
 ```
 
